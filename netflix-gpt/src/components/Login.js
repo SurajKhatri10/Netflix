@@ -1,13 +1,22 @@
 import React, { useRef, useState } from 'react'
 import Header from './Header'
 import { validateData } from '../utils/validate';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile  } from "firebase/auth";
+import { auth } from '../utils/firebase';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { addUser } from '../utils/userSlice';
+
 
 const Login = () => {
 
   const [isLoginForm,setIsLoginForm] = useState(true);
   const [errorMsg,setErrorMsg] = useState(null);
+  const name = useRef();
   const email = useRef();
   const password = useRef();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const toggleSignIn = () => {
     setIsLoginForm(!isLoginForm);
@@ -16,7 +25,49 @@ const Login = () => {
   const handleOnClick = ()=>{
     const msg = validateData(email.current.value, password.current.value);
     setErrorMsg(msg);
-    console.log(msg,email,password);
+
+    if(msg) return;
+
+    if(!isLoginForm){
+      //sign up
+      createUserWithEmailAndPassword(auth, email.current.value, password.current.value)
+      .then((userCredential) => {
+        // Signed in 
+        const user = userCredential.user;
+        updateProfile(auth.currentUser, {
+          displayName: name.current.value
+        }).then(() => {
+          // Profile updated!
+          const {uid, email, displayName } = auth.currentUser;
+          dispatch(addUser({uid:uid, email:email, displayName:displayName}));
+          navigate('/browse')
+        }).catch((error) => {
+          setErrorMsg(error.message);
+        });
+        
+        console.log(user);
+      })
+      .catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        setErrorMsg(errorCode +" - "+ errorMessage);
+      });
+    }else{
+      //sign in / login
+      signInWithEmailAndPassword(auth, email.current.value, password.current.value)
+      .then((userCredential) => {
+        // Signed in 
+        const user = userCredential.user;
+
+        navigate('/browse')
+        // ...
+      })
+      .catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        setErrorMsg(errorCode +" - "+ errorMessage);
+      });
+    }
   }
 
   return (
@@ -30,7 +81,7 @@ const Login = () => {
       <form onSubmit={(e)=>e.preventDefault()} className='bg-black relative w-3/12 text-white p-10 bg-opacity-90 rounded-md'>
         <h1 className='py-4 text-3xl font-bold'>{isLoginForm ? 'Sign In' : 'Sign Up'}</h1>
 
-        {!isLoginForm && <input type='text' placeholder='Name' required className='p-2 my-2 w-full rounded-lg bg-slate-500 outline-none'/>}
+        {!isLoginForm && <input type='text' placeholder='Name' ref={name} required className='p-2 my-2 w-full rounded-lg bg-slate-500 outline-none'/>}
 
         <input type='text' ref={email} placeholder='email' required className='p-2 my-2 w-full rounded-lg bg-slate-500'/>
 
@@ -40,7 +91,7 @@ const Login = () => {
           {isLoginForm ? 'Sign In' : 'Sign Up'}
         </button>
         <div className='py-4' onClick={toggleSignIn}>
-          {!isLoginForm ? <p><span className='text-gray-500'>New to Netflix?</span> Sign Up Now</p>:<p><span className='text-gray-500'>Already a User!</span> Sign In Now</p>}
+          {isLoginForm ? <p><span className='text-gray-500'>New to Netflix?</span> Sign Up Now</p>:<p><span className='text-gray-500'>Already a User!</span> Sign In Now</p>}
         </div>
       </form>
       </div>
