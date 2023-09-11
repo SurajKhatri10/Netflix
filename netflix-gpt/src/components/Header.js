@@ -8,7 +8,7 @@ import { LOGO, USER_ICON } from '../utils/constants';
 
 
 const Header = () => {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector(store => store.user);
 
